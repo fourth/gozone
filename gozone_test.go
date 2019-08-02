@@ -143,24 +143,24 @@ func TestRecordTypes(t *testing.T) {
 	records := map[string]Record{
 		"adomain.com. 300 IN SOA ns.ahostdomain.com. hostmaster.ahostdomain.com. ( 1271271271 10800 3600 604800 300 )": Record{
 			"adomain.com.", 300, RecordClass_IN, RecordType_SOA,
-			[]string{"ns.ahostdomain.com.", "hostmaster.ahostdomain.com.", "(", "1271271271", "10800", "3600", "604800", "300", ")"}, "",
+			[]string{"ns.ahostdomain.com.", "hostmaster.ahostdomain.com.", "(", "1271271271", "10800", "3600", "604800", "300", ")"}, "", "",
 		},
 
 		"adomain.com. 300 IN SOA ns.ahostdomain.com. hostmaster.ahostdomain.com.(1271271271 10800 3600 604800 300)": Record{
 			"adomain.com.", 300, RecordClass_IN, RecordType_SOA,
-			[]string{"ns.ahostdomain.com.", "hostmaster.ahostdomain.com.", "(", "1271271271", "10800", "3600", "604800", "300", ")"}, "",
+			[]string{"ns.ahostdomain.com.", "hostmaster.ahostdomain.com.", "(", "1271271271", "10800", "3600", "604800", "300", ")"}, "", "",
 		},
 
-		"adomain.com. 300 IN A 192.168.0.1;aComment": Record{"adomain.com.", 300, RecordClass_IN, RecordType_A, []string{"192.168.0.1"}, ";aComment"},
-		"adomain.com. IN A 192.168.0.1":              Record{"adomain.com.", -1, RecordClass_IN, RecordType_A, []string{"192.168.0.1"}, ""},
+		"adomain.com. 300 IN A 192.168.0.1;aComment": Record{"adomain.com.", 300, RecordClass_IN, RecordType_A, []string{"192.168.0.1"}, ";aComment", ""},
+		"adomain.com. IN A 192.168.0.1":              Record{"adomain.com.", -1, RecordClass_IN, RecordType_A, []string{"192.168.0.1"}, "", ""},
 
-		"adomain.com. 300 IN A 192.168.0.1\n\nadomain.com. 300 IN A 192.168.0.2\n": Record{"adomain.com.", 300, RecordClass_IN, RecordType_A, []string{"192.168.0.1"}, ""},
+		"adomain.com. 300 IN A 192.168.0.1\n\nadomain.com. 300 IN A 192.168.0.2\n": Record{"adomain.com.", 300, RecordClass_IN, RecordType_A, []string{"192.168.0.1"}, "", ""},
 
-		"adomain.com. 300 IN NS ns.ahostdomain.com.":      Record{"adomain.com.", 300, RecordClass_IN, RecordType_NS, []string{"ns.ahostdomain.com."}, ""},
-		"adomain.com. 300 IN MX 10 smtp.ahostdomain.com.": Record{"adomain.com.", 300, RecordClass_IN, RecordType_MX, []string{"10", "smtp.ahostdomain.com."}, ""},
-		`adomain.com. 300 IN TXT "a \"b\" c"`:             Record{"adomain.com.", 300, RecordClass_IN, RecordType_TXT, []string{`"a \"b\" c"`}, ""},
-		`adomain.com. 300 IN TXT"a \"b\" c"`:              Record{"adomain.com.", 300, RecordClass_IN, RecordType_TXT, []string{`"a \"b\" c"`}, ""},
-		"www.adomain.com. 300 IN CNAME adomain.com.":      Record{"www.adomain.com.", 300, RecordClass_IN, RecordType_CNAME, []string{"adomain.com."}, ""},
+		"adomain.com. 300 IN NS ns.ahostdomain.com.":      Record{"adomain.com.", 300, RecordClass_IN, RecordType_NS, []string{"ns.ahostdomain.com."}, "", ""},
+		"adomain.com. 300 IN MX 10 smtp.ahostdomain.com.": Record{"adomain.com.", 300, RecordClass_IN, RecordType_MX, []string{"10", "smtp.ahostdomain.com."}, "", ""},
+		`adomain.com. 300 IN TXT "a \"b\" c"`:             Record{"adomain.com.", 300, RecordClass_IN, RecordType_TXT, []string{`"a \"b\" c"`}, "", ""},
+		`adomain.com. 300 IN TXT"a \"b\" c"`:              Record{"adomain.com.", 300, RecordClass_IN, RecordType_TXT, []string{`"a \"b\" c"`}, "", ""},
+		"www.adomain.com. 300 IN CNAME adomain.com.":      Record{"www.adomain.com.", 300, RecordClass_IN, RecordType_CNAME, []string{"adomain.com."}, "", ""},
 	}
 
 	for spec, record := range records {
@@ -293,7 +293,11 @@ func TestOriginDefinesDefault(t *testing.T) {
 		t.Fatalf("Parsing of default-domain record returned an error: %s", err)
 	}
 
-	if r.DomainName != "adomain.com." {
+	if r.Name != "" {
+		t.Fatalf("Parsing of default-domain record did not result in a Record with the default domain")
+	}
+
+	if r.FQDN != "adomain.com." {
 		t.Fatalf("Parsing of default-domain record did not result in a Record with the default domain")
 	}
 }
@@ -320,7 +324,7 @@ func TestOriginControlEntryCanHaveComment(t *testing.T) {
 		t.Fatalf("Parsing of default-domain record returned an error: %s", err)
 	}
 
-	if r.DomainName != "adomain.com." {
+	if r.FQDN != "adomain.com." {
 		t.Fatalf("Parsing of default-domain record did not result in a Record with the default domain")
 	}
 }
@@ -338,7 +342,11 @@ func TestOriginDefinesRelative(t *testing.T) {
 		t.Fatalf("Parsing of relative record returned an error: %s", err)
 	}
 
-	if r.DomainName != "www.adomain.com." {
+	if r.Name != "www" {
+		t.Fatalf("Parsing of relative record did not result in a Record within the default domain")
+	}
+
+	if r.FQDN != "www.adomain.com." {
 		t.Fatalf("Parsing of relative record did not result in a Record within the default domain")
 	}
 }
@@ -356,7 +364,7 @@ func TestOriginDoesNotImpactFullyQualified(t *testing.T) {
 		t.Fatalf("Parsing of fully-qualified record returned an error: %s", err)
 	}
 
-	if r.DomainName != "www.example.com." {
+	if r.FQDN != "www.example.com." {
 		t.Fatalf("Parsing of fully-qualified record with an $ORIGIN defined did not result in the entry's domain as-specified")
 	}
 }

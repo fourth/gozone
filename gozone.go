@@ -324,16 +324,17 @@ func (rt RecordType) String() string {
 }
 
 type Record struct {
-	DomainName string
+	FQDN       string
 	TimeToLive int64 // uint32, expanded and signed to allow for "unset" indicator
 	Class      RecordClass
 	Type       RecordType
 	Data       []string
 	Comment    string
+	Name       string
 }
 
 func (r Record) String() string {
-	spec := []string{r.DomainName}
+	spec := []string{r.FQDN}
 
 	if r.TimeToLive != -1 {
 		spec = append(spec, fmt.Sprintf("%d", r.TimeToLive))
@@ -943,14 +944,17 @@ func (s *Scanner) Next(outrecord *Record) error {
 			return fmt.Errorf("Record for current domain specified when no $ORIGIN defined")
 		}
 		domain = s.origin
+		record.Name = ""
 	} else if domain[len(token)-1] != '.' {
 		if s.origin == "" {
 			return fmt.Errorf("Record relative-to-current domain specified when no $ORIGIN defined")
 		}
 
 		domain = fmt.Sprintf("%s.%s", token, s.origin)
+		fmt.Println("token", token)
+		record.Name = token
 	}
-	record.DomainName = domain
+	record.FQDN = domain
 
 	for {
 		if token, err = s.nextToken(); err != nil {
@@ -1003,7 +1007,7 @@ func (s *Scanner) Next(outrecord *Record) error {
 		if !hasData {
 			if token == "\n" || token[0] == ';' {
 				return fmt.Errorf("missing data part for DomainName: %s; Type: %s",
-					record.DomainName,
+					record.FQDN,
 					record.Type,
 				)
 			}
