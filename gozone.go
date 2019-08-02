@@ -951,7 +951,6 @@ func (s *Scanner) Next(outrecord *Record) error {
 		}
 
 		domain = fmt.Sprintf("%s.%s", token, s.origin)
-		fmt.Println("token", token)
 		record.Name = token
 	}
 	record.FQDN = domain
